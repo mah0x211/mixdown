@@ -45,6 +45,7 @@ import (
 
 type Mixdown struct {
 	// configuration parameters
+	BaseURL      string `json:"baseURL,omitempty"`
 	OutDir       string `json:"outdir,omitempty"`
 	UseEpochname bool   `json:"use_epochname,omitempty"`
 	Extname      string `json:"extname,omitempty"`
@@ -69,6 +70,7 @@ const (
 
 func createMixdown() *Mixdown {
 	return &Mixdown{
+		BaseURL:      "/",
 		OutDir:       "docs",
 		UseEpochname: false,
 		Extname:      "html",
@@ -107,7 +109,7 @@ func (m *Mixdown) renderTags() error {
 		// grouping with hashtags
 		for _, hashtag := range doc.Hashtags {
 			tagName := hashtag[1:]
-			href := filepath.Join("t", url.PathEscape(tagName)) + "/"
+			href := filepath.Join(m.BaseURL, "t", url.PathEscape(tagName)) + "/"
 			doc.Summary = strings.Replace(
 				doc.Summary, hashtag,
 				fmt.Sprintf("<a href=%q>%s</a>", href, hashtag), 1,
@@ -238,7 +240,7 @@ func (m *Mixdown) renderArchives() error {
 		NPage:    &page,
 		Pathname: filepath.Join("archive", "index."+m.Extname),
 	}
-	arc.Href = arc.Pathname
+	arc.Href = filepath.Join(m.BaseURL, arc.Pathname)
 	head := arc
 	ndoc := m.NArchive
 	for _, doc := range m.Documents {
@@ -254,7 +256,7 @@ func (m *Mixdown) renderArchives() error {
 				Newer:    arc,
 			}
 			arc = arc.Older
-			arc.Href = arc.Pathname
+			arc.Href = filepath.Join(m.BaseURL, arc.Pathname)
 		}
 		arc.Docs = append(arc.Docs, doc)
 	}
@@ -369,6 +371,7 @@ func main() {
 	}
 
 	// parse command-line parameters
+	flag.StringVar(&m.BaseURL, "base-url", m.BaseURL, "base URL for all relative URLs in a document.")
 	flag.StringVar(&m.OutDir, "outdir", m.OutDir, "pathname of output directory. if not specified, automatically generate a temporary name.")
 	flag.BoolVar(&m.UseEpochname, "use-epochname", m.UseEpochname, "use epoch time of file creation time as filename. (default \"false\")")
 	flag.StringVar(&m.Extname, "extname", m.Extname, "extension name of the output file.")
@@ -395,7 +398,8 @@ func main() {
 	}
 
 	log.Println("mixdown with following options;")
-	log.Printf("  -outdir    : %q", m.OutDir)
+	log.Printf("  -base-url      : %q", m.BaseURL)
+	log.Printf("  -outdir       : %q", m.OutDir)
 	log.Printf("  -use-epochname: %t", m.UseEpochname)
 	log.Printf("  -extname      : %q", m.Extname)
 	log.Printf("  -narchive     : %d", m.NArchive)
@@ -424,7 +428,7 @@ func main() {
 	// load tracked files
 	log.Println(strings.Repeat("*", 80))
 	log.Println("LOAD TRACKED FILES")
-	if docs, rsrc, err := file.GetTrackedFiles(m.UseEpochname, m.Extname); err != nil {
+	if docs, rsrc, err := file.GetTrackedFiles(m.BaseURL, m.UseEpochname, m.Extname); err != nil {
 		log.Fatalf("failed to file.GetTrackedFiles(): %s", err)
 	} else {
 		m.Documents = docs

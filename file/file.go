@@ -70,7 +70,7 @@ func epoch2iso8601(epoch string) (string, error) {
 }
 
 // GetTrackedFiles ...
-func GetTrackedFiles(useEpochname bool, extname string) ([]*TrackedFile, []*TrackedFile, error) {
+func GetTrackedFiles(baseURL string, useEpochname bool, extname string) ([]*TrackedFile, []*TrackedFile, error) {
 	// read tracked files of git
 	out, err := util.ExecCommand("git", "ls-files", "-z")
 	if err != nil {
@@ -137,10 +137,12 @@ func GetTrackedFiles(useEpochname bool, extname string) ([]*TrackedFile, []*Trac
 			// create pathname
 			if useEpochname {
 				f.Pathname = filepath.Join(f.Cdate[:4], f.Ctime+"."+extname)
-				f.Href = f.Pathname
+				f.Href = filepath.Join(baseURL, f.Pathname)
 			} else {
 				f.Pathname = filepath.Join(f.Cdate[:4], f.Name+"."+extname)
-				f.Href = filepath.Join(f.Cdate[:4], url.PathEscape(f.Name)+"."+extname)
+				f.Href = filepath.Join(
+					baseURL, f.Cdate[:4], url.PathEscape(f.Name)+"."+extname,
+				)
 			}
 			docs = append(docs, f)
 		} else {
