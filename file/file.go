@@ -94,15 +94,15 @@ func GetTrackedFiles(useEpochname bool, extname string) ([]*TrackedFile, []*Trac
 		//    %s : subject
 		//    %b : body
 		// 	for more details: https://git-scm.com/docs/git-log
-		out, err = util.ExecCommand("git", "log", "--format=%ae/%ct/%s/%b", "--", src)
+		out, err = util.ExecCommand("git", "log", "--format=%ae%x00%ct%x00%s%x00%b%x00", "--", src)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to util.ExecCommand(): %s", err)
 		}
 
 		// extract segments
-		logs := strings.Split(string(out), "\n")
+		logs := strings.Split(string(out), "\000\n")
 		log.Printf("%q - %q", src, logs[0])
-		info := strings.SplitN(logs[0], "/", 4)
+		info := strings.Split(logs[0], "\000")
 		f := &TrackedFile{
 			isMarkdown: strings.HasSuffix(src, ".md"),
 			Source:     src,
@@ -118,7 +118,7 @@ func GetTrackedFiles(useEpochname bool, extname string) ([]*TrackedFile, []*Trac
 
 		// set first-commit time to ctime
 		if len(logs) > 1 {
-			info = strings.SplitN(logs[len(logs)-1], "/", 4)
+			info = strings.SplitN(logs[len(logs)-1], "\000", 3)
 			f.Ctime = info[1]
 		}
 
