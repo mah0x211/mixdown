@@ -47,7 +47,7 @@ type Mixdown struct {
 	// configuration parameters
 	BaseURL      string `json:"baseURL,omitempty"`
 	OutDir       string `json:"outdir,omitempty"`
-	UseEpochname bool   `json:"use_epochname,omitempty"`
+	UseEpochname bool   `json:"useEpochname,omitempty"`
 	Extname      string `json:"extname,omitempty"`
 	NArchive     int    `json:"narchive,omitempty"`
 
