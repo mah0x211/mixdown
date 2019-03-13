@@ -83,6 +83,7 @@ func createMixdown() *Mixdown {
 // render tags
 func (m *Mixdown) renderTags() error {
 	type stTag struct {
+		BaseURL  string
 		PageType int
 		Page     int
 		NPage    *int
@@ -127,6 +128,7 @@ func (m *Mixdown) renderTags() error {
 					*tag.NPage++
 					pageName := strconv.Itoa(*tag.NPage) + "." + m.Extname
 					tag.Older = &stTag{
+						BaseURL:  m.BaseURL,
 						PageType: pageTypeTag,
 						Page:     *tag.NPage,
 						NPage:    tag.NPage,
@@ -142,6 +144,7 @@ func (m *Mixdown) renderTags() error {
 			} else {
 				page := 1
 				tags[hashtag] = &stTag{
+					BaseURL:  m.BaseURL,
 					PageType: pageTypeTag,
 					Page:     page,
 					NPage:    &page,
@@ -186,6 +189,7 @@ func (m *Mixdown) renderTags() error {
 func (m *Mixdown) renderArticles() error {
 	type stArticle struct {
 		*file.TrackedFile
+		BaseURL  string
 		PageType int
 		Readme   *file.TrackedFile
 		Hashtags []string
@@ -196,7 +200,9 @@ func (m *Mixdown) renderArticles() error {
 			return fmt.Errorf("error File.Load(): %s", err)
 		}
 
-		article := stArticle{doc, pageTypeArticle, m.Readme, m.Hashtags}
+		article := stArticle{
+			doc, m.BaseURL, pageTypeArticle, m.Readme, m.Hashtags,
+		}
 		pathname := filepath.Join(m.OutDir, doc.Pathname)
 		log.Printf("%q -> %q", doc.Source, pathname)
 
@@ -217,6 +223,7 @@ func (m *Mixdown) renderArticles() error {
 // render archives into archive/ directory
 func (m *Mixdown) renderArchives() error {
 	type stArchive struct {
+		BaseURL  string
 		PageType int
 		Page     int
 		NPage    *int
@@ -236,6 +243,7 @@ func (m *Mixdown) renderArchives() error {
 	page := 1
 	arc := &stArchive{
 		PageType: pageTypeArchive,
+		BaseURL:  m.BaseURL,
 		Page:     page,
 		NPage:    &page,
 		Pathname: filepath.Join("archive", "index."+m.Extname),
@@ -249,6 +257,7 @@ func (m *Mixdown) renderArchives() error {
 			arc.First, arc.Last = arc.Docs[0], arc.Docs[ndoc-1]
 			page++
 			arc.Older = &stArchive{
+				BaseURL:  m.BaseURL,
 				PageType: pageTypeArchive,
 				Page:     page,
 				NPage:    &page,
@@ -289,6 +298,7 @@ func (m *Mixdown) renderArchives() error {
 // render home
 func (m *Mixdown) renderHome() error {
 	type stHome struct {
+		BaseURL  string
 		PageType int
 		Readme   *file.TrackedFile
 		Hashtags []string
@@ -296,7 +306,9 @@ func (m *Mixdown) renderHome() error {
 		Docs     []*file.TrackedFile
 	}
 
-	home := stHome{pageTypeHome, m.Readme, m.Hashtags, "", m.Documents}
+	home := stHome{
+		m.BaseURL, pageTypeHome, m.Readme, m.Hashtags, "", m.Documents,
+	}
 	pathname := filepath.Join(m.OutDir, "index."+m.Extname)
 	log.Printf("index -> %q", pathname)
 
