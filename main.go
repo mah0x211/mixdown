@@ -345,7 +345,7 @@ func main() {
 	m := createMixdown()
 
 	// load mixdown config file
-	cfgFile := filepath.Join(MixdownDotDir, "conf.json")
+	cfgFile := filepath.Join(MixdownDotDir, "config.json")
 	if f, err := os.Open(cfgFile); err == nil {
 		log.Println(strings.Repeat("*", 80))
 		log.Printf("LOAD CONFIG FILE %q", cfgFile)
