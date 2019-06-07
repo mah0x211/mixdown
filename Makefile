@@ -22,6 +22,7 @@
 # Created by Masatoshi Fukunaga on 19/01/09
 #
 
+NAME=mixdown
 GOCMD=go
 GOBUILD=$(GOCMD) build
 GOGENERATE=$(GOCMD) generate
@@ -31,7 +32,23 @@ GOTOOL=$(GOCMD) tool
 GOGET=$(GOCMD) get
 BUILD_DIR=$(PWD)/build
 DEPS_DIR=$(BUILD_DIR)/deps
-OUTPUT=$(BUILD_DIR)/mixdown
+GOLINT=`which golangci-lint`
+LINT_OPT=--max-issues-per-linter=0 \
+		--max-same-issues=0 \
+		--issues-exit-code=0 \
+		--tests=false \
+		--enable=dupl \
+		--enable=goconst \
+		--enable=gocritic \
+		--enable=gofmt \
+		--enable=goimports \
+		--enable=golint \
+		--enable=gosec \
+		--enable=maligned \
+		--enable=misspell \
+		--enable=stylecheck \
+		--enable=unconvert \
+		--exclude=ifElseChain
 
 #
 # add $(DEPS_DIR)/bin to PATH
@@ -43,11 +60,11 @@ all: test build
 prepare:
 	GO111MODULES=on GOPATH=$(DEPS_DIR) $(GOGET) gopkg.in/russross/blackfriday.v2
 
-run: build
-	./build/mixdown
-
 test: prepare
 	GOPATH=$(DEPS_DIR) $(GOTEST) -coverprofile=cover.out . $(TESTPKGS)
+
+lint:
+	GOPATH=$(DEPS_DIR) $(GOLINT) run $(LINT_OPT)
 
 coverage: test
 	GOPATH=$(DEPS_DIR) $(GOTOOL) cover -func=cover.out
@@ -59,5 +76,12 @@ clean:
 
 # build binary
 build: prepare
-	GOPATH=$(DEPS_DIR) $(GOBUILD) -o $(OUTPUT) -v
+	GOPATH=$(DEPS_DIR) $(GOBUILD) -o $(BUILD_DIR)/$(NAME) -v
+
+build-linux: prepare
+	GOPATH=$(DEPS_DIR) GOARCH=amd64 GOOS=linux $(GOBUILD) -o $(BUILD_DIR)/linux/$(NAME) -v
+
+build-darwin: prepare
+	GOPATH=$(DEPS_DIR) GOARCH=amd64 GOOS=darwin $(GOBUILD) -o $(BUILD_DIR)/darwin/$(NAME) -v
+
 
