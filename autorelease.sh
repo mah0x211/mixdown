@@ -21,18 +21,22 @@ apt-get install jq file curl -y
 # create binary files
 #
 echo "CREATE RELEASE FILES"
+WORKDIR=${PWD}
 for pathname in ./build/*/*; do
     echo "  create .tar.gz and checksum files for ${pathname}"
     cmdname=$(basename ${pathname})
-    platform=$(basename $(dirname ${pathname}))
-    tarfile="${pathname}-${platform}.tar.gz"
+    cmddir=$(dirname ${pathname})
+    platform=$(basename ${cmddir})
+    tarfile="${cmdname}-${platform}.tar.gz"
     sumfile="${tarfile}.sha256"
+
+    cd ${cmddir}
 
     #
     # build .tar.gz file
     #
-    echo "  tar -zcvf ${tarfile} ${pathname}"
-    tar -zcvf ${tarfile} ${pathname}
+    echo "  tar -zcvf ${tarfile} ${cmdname}"
+    tar -zcvf ${tarfile} ${cmdname}
 
     #
     # build .sha256 file
@@ -43,9 +47,11 @@ for pathname in ./build/*/*; do
     #
     # remove bin file
     #
-    echo "  remove ${pathname}"
-    rm ${pathname}
+    echo "  remove ${cmdname}"
+    rm ${cmdname}
     echo ""
+
+    cd ${WORKDIR}
 done
 
 
