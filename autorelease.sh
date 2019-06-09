@@ -71,7 +71,7 @@ echo ""
 #
 # add tag if not exists
 #
-TAG="${BRANCH}"
+TAG="release-${BRANCH}"
 if [ -z "$(git tag -l | grep ^${TAG}$)" ]; then
     echo "ADD TAG: ${TAG}"
     git tag ${TAG}
