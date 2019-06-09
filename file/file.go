@@ -138,6 +138,9 @@ func GetTrackedFiles(baseURL string, useEpochname bool, extname string) ([]*Trac
 			if useEpochname {
 				f.Pathname = filepath.Join(f.Cdate[:4], f.Ctime+"."+extname)
 				f.Href = filepath.Join(baseURL, f.Pathname)
+			} else if src == "README.md" {
+				f.Pathname = f.Name + "." + extname
+				f.Href = filepath.Join(baseURL, f.Pathname)
 			} else {
 				f.Pathname = filepath.Join(f.Cdate[:4], f.Name+"."+extname)
 				f.Href = filepath.Join(
