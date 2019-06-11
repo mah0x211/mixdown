@@ -83,14 +83,16 @@ func createMixdown() *Mixdown {
 }
 
 // render sitemap
-func (m *Mixdown) renderSitemap(uri string) error {
+func (m *Mixdown) renderSitemap(pathname string) error {
 	if m.SitemapFile != nil {
+		// remove outdir prefix
+		pathname = filepath.Join(m.BaseURL, strings.TrimPrefix(pathname, m.OutDir))
 		// escape-uri-component
 		segs := make([]string, 1)
-		for _, seg := range strings.Split(uri, "/") {
+		for _, seg := range strings.Split(pathname, "/") {
 			segs = append(segs, url.PathEscape(seg))
 		}
-		uri = m.Sitemap + strings.Join(segs, "/") + "\n"
+		uri := m.Sitemap + "/" + filepath.Join(segs...) + "\n"
 		if _, err := m.SitemapFile.WriteString(uri); err != nil {
 			return err
 		}
@@ -368,29 +370,6 @@ func (m *Mixdown) renderResources() error {
 	return nil
 }
 
-// render sitemap
-// func (m *Mixdown) renderSitemap() error {
-// 	pathname := filepath.Join(m.OutDir, "sitemap.txt")
-// 	log.Printf("index -> %q", pathname)
-
-// 	// render
-// 	if ofile, err := util.CreateFile(pathname); err != nil {
-// 		return fmt.Errorf("error util.CreateFile(): %s", err)
-// 	} else if err = m.Theme.Execute(ofile, "home", home); err != nil {
-// 		return fmt.Errorf("error Template.Execute(): %s", err)
-// 	} else {
-// 		ofile.Close()
-// 	}
-
-// 	if txt, err := json.MarshalIndent(m, "", "  "); err != nil {
-// 		return fmt.Errorf("error json.MarshalIndent(): %s", err)
-// 	} else {
-// 		log.Println(string(txt))
-// 	}
-// 	log.Printf("%#v", m)
-// 	return nil
-// }
-
 // render
 func (m *Mixdown) render(target string) error {
 	switch target {
@@ -463,6 +442,8 @@ func main() {
 	} else if m.NArchive < 1 {
 		log.Fatalf("error invalid narchive %d - narchive must be greater than 0", m.NArchive)
 	}
+	m.OutDir = filepath.Join(m.OutDir)
+
 	m.Sitemap = strings.TrimSpace(m.Sitemap)
 	if m.Sitemap != "" {
 		if u, err := url.Parse(m.Sitemap); err != nil {
