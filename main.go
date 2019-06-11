@@ -50,13 +50,15 @@ type Mixdown struct {
 	UseEpochname bool   `json:"useEpochname,omitempty"`
 	Extname      string `json:"extname,omitempty"`
 	NArchive     int    `json:"narchive,omitempty"`
+	Sitemap      string `json:"sitemap,omitempty"`
 
-	ThemeDir  string              `json:"-"`
-	Theme     *theme.Theme        `json:"-"`
-	Hashtags  []string            `json:"-"`
-	Documents []*file.TrackedFile `json:"-"`
-	Resources []*file.TrackedFile `json:"-"`
-	Readme    *file.TrackedFile   `json:"-"`
+	SitemapFile *os.File            `json:"-"`
+	ThemeDir    string              `json:"-"`
+	Theme       *theme.Theme        `json:"-"`
+	Hashtags    []string            `json:"-"`
+	Documents   []*file.TrackedFile `json:"-"`
+	Resources   []*file.TrackedFile `json:"-"`
+	Readme      *file.TrackedFile   `json:"-"`
 }
 
 const MixdownDotDir string = ".mixdown/"
@@ -78,6 +80,23 @@ func createMixdown() *Mixdown {
 
 		ThemeDir: filepath.Join(MixdownDotDir, "theme"),
 	}
+}
+
+// render sitemap
+func (m *Mixdown) renderSitemap(uri string) error {
+	if m.SitemapFile != nil {
+		// escape-uri-component
+		segs := make([]string, 1)
+		for _, seg := range strings.Split(uri, "/") {
+			segs = append(segs, url.PathEscape(seg))
+		}
+		uri = m.Sitemap + strings.Join(segs, "/") + "\n"
+		if _, err := m.SitemapFile.WriteString(uri); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // render tags
@@ -177,6 +196,9 @@ func (m *Mixdown) renderTags() error {
 				return fmt.Errorf("error Template.Execute(): %s", err)
 			} else {
 				ofile.Close()
+				if err = m.renderSitemap(pathname); err != nil {
+					return err
+				}
 			}
 			tag = tag.Older
 		}
@@ -213,6 +235,9 @@ func (m *Mixdown) renderArticles() error {
 			return fmt.Errorf("error Template.Execute(): %s", err)
 		} else {
 			ofile.Close()
+			if err = m.renderSitemap(pathname); err != nil {
+				return err
+			}
 		}
 		doc.Unload()
 	}
@@ -287,6 +312,9 @@ func (m *Mixdown) renderArchives() error {
 				return fmt.Errorf("error Template.Execute(): %s", err)
 			} else {
 				ofile.Close()
+				if err = m.renderSitemap(pathname); err != nil {
+					return err
+				}
 			}
 			arc = arc.Older
 		}
@@ -319,6 +347,9 @@ func (m *Mixdown) renderHome() error {
 		return fmt.Errorf("error Template.Execute(): %s", err)
 	} else {
 		ofile.Close()
+		if err = m.renderSitemap(pathname); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -336,6 +367,29 @@ func (m *Mixdown) renderResources() error {
 
 	return nil
 }
+
+// render sitemap
+// func (m *Mixdown) renderSitemap() error {
+// 	pathname := filepath.Join(m.OutDir, "sitemap.txt")
+// 	log.Printf("index -> %q", pathname)
+
+// 	// render
+// 	if ofile, err := util.CreateFile(pathname); err != nil {
+// 		return fmt.Errorf("error util.CreateFile(): %s", err)
+// 	} else if err = m.Theme.Execute(ofile, "home", home); err != nil {
+// 		return fmt.Errorf("error Template.Execute(): %s", err)
+// 	} else {
+// 		ofile.Close()
+// 	}
+
+// 	if txt, err := json.MarshalIndent(m, "", "  "); err != nil {
+// 		return fmt.Errorf("error json.MarshalIndent(): %s", err)
+// 	} else {
+// 		log.Println(string(txt))
+// 	}
+// 	log.Printf("%#v", m)
+// 	return nil
+// }
 
 // render
 func (m *Mixdown) render(target string) error {
@@ -388,6 +442,7 @@ func main() {
 	flag.BoolVar(&m.UseEpochname, "use-epochname", m.UseEpochname, "use epoch time of file creation time as filename. (default \"false\")")
 	flag.StringVar(&m.Extname, "extname", m.Extname, "extension name of the output file.")
 	flag.IntVar(&m.NArchive, "narchive", m.NArchive, "number of articles in archive.")
+	flag.StringVar(&m.Sitemap, "sitemap", m.Sitemap, "hostname of fully qualified url.")
 	flag.Parse()
 
 	// verify outdir
@@ -408,13 +463,26 @@ func main() {
 	} else if m.NArchive < 1 {
 		log.Fatalf("error invalid narchive %d - narchive must be greater than 0", m.NArchive)
 	}
+	m.Sitemap = strings.TrimSpace(m.Sitemap)
+	if m.Sitemap != "" {
+		if u, err := url.Parse(m.Sitemap); err != nil {
+			log.Fatalf("error invalid sitemap %q - %s", m.Sitemap, err)
+		} else if u.Scheme == "" || u.Host == "" {
+			log.Fatalf("error invalid sitemap %q - sitemap must be fully qualified url", m.Sitemap)
+		} else if u.Scheme != "http" && u.Scheme != "https" {
+			log.Fatalf("error invalid sitemap %q - scheme must be 'http' or 'https'", m.Sitemap)
+		} else if u.User != nil || u.Path != "" || u.ForceQuery || u.Fragment != "" || strings.HasSuffix(m.Sitemap, "#") {
+			log.Fatalf("error invalid sitemap %q - do not include the userinfo, path, query or fragment", m.Sitemap)
+		}
+	}
 
 	log.Println("mixdown with following options;")
-	log.Printf("  -base-url      : %q", m.BaseURL)
+	log.Printf("  -base-url     : %q", m.BaseURL)
 	log.Printf("  -outdir       : %q", m.OutDir)
 	log.Printf("  -use-epochname: %t", m.UseEpochname)
 	log.Printf("  -extname      : %q", m.Extname)
 	log.Printf("  -narchive     : %d", m.NArchive)
+	log.Printf("  -sitemap      : %q", m.Sitemap)
 
 	// remove existing output-dir
 	if err := os.RemoveAll(m.OutDir); err != nil && !os.IsNotExist(err) {
@@ -426,6 +494,19 @@ func main() {
 	log.Printf("CREATE OUTPUT DIRECTORY %q", m.OutDir)
 	if err := util.Mkdir(m.OutDir); err != nil {
 		log.Fatalf("failed to util.Mkdir(): %s", err)
+	}
+
+	// create sitemap.txt
+	if m.Sitemap != "" {
+		pathname := filepath.Join(m.OutDir, "sitemap.txt")
+		if ofile, err := util.CreateFile(pathname); err != nil {
+			log.Fatalf("faield to util.CreateFile(): %s", err)
+		} else {
+			m.SitemapFile = ofile
+			defer ofile.Close()
+			log.Println(strings.Repeat("*", 80))
+			log.Printf("CREATE SITEMAP %q", pathname)
+		}
 	}
 
 	// load theme files
