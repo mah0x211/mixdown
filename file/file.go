@@ -176,7 +176,10 @@ func GetTrackedFiles(baseURL string, useEpochname bool, extname string) ([]*Trac
 		//    %s : subject
 		//    %b : body
 		// 	for more details: https://git-scm.com/docs/git-log
-		out, err = util.ExecCommand("git", "log", "--format=%ae%x00%ct%x00%s%x00%b%x00", "--", src)
+		out, err = util.ExecCommand(
+			"git", "log", "--follow", "--format=%ae%x00%ct%x00%s%x00%b%x00",
+			"--", src,
+		)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to util.ExecCommand(): %s", err)
 		}
