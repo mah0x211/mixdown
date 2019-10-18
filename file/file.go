@@ -229,6 +229,11 @@ func GetTrackedFiles(baseURL string, useEpochname bool, extname string) ([]*Trac
 					baseURL, f.Cdate[:4], url.PathEscape(f.Name)+"."+extname,
 				)
 			}
+
+			if err = f.Load(); err != nil {
+				return nil, nil, fmt.Errorf("error File.Load(): %s", err)
+			}
+
 			docs = append(docs, f)
 		} else {
 			rsrc = append(rsrc, f)
