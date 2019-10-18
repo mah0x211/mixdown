@@ -220,10 +220,6 @@ func (m *Mixdown) renderArticles() error {
 	}
 
 	for _, doc := range m.Documents {
-		if err := doc.Load(); err != nil {
-			return fmt.Errorf("error File.Load(): %s", err)
-		}
-
 		article := stArticle{
 			doc, m.BaseURL, pageTypeArticle, m.Readme, m.Hashtags,
 		}
