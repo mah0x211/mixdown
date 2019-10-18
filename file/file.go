@@ -42,6 +42,88 @@ import (
 	blackfriday "gopkg.in/russross/blackfriday.v2"
 )
 
+type mdExtractor struct {
+	Subject     string
+	Summary     string
+	done        bool
+	skipSubject bool
+	container   *blackfriday.Node
+	buf         bytes.Buffer
+}
+
+func (e *mdExtractor) Extract(node *blackfriday.Node, entering bool) (skip bool) {
+	if e.done {
+		return
+	}
+
+	// ignore document
+	if node.Type == blackfriday.Document {
+		return
+	}
+
+	// select container
+	if e.container == nil {
+		// not container node
+		if !entering {
+			return
+		}
+
+		// extract subject from h1 node
+		if !e.skipSubject {
+			if node.Type == blackfriday.Heading &&
+				node.HeadingData.Level == 1 {
+				e.container = node
+				// skip rendering as body contents
+				skip = true
+				return
+			}
+			// skip subject extraction if non-h1 node
+			e.skipSubject = true
+		}
+
+		// extract summary from p node
+		if node.Type == blackfriday.Paragraph {
+			e.container = node
+		} else {
+			// skip summary extraction if non-p node
+			e.done = true
+		}
+		return
+	}
+
+	// end container walking
+	if node == e.container {
+		e.container = nil
+
+		// use extracted literals as subject
+		if !e.skipSubject {
+			e.skipSubject = true
+			e.Subject = e.buf.String()
+			e.buf.Reset()
+			// skip rendering as body contents
+			skip = true
+			return
+		}
+
+		// use extracted literals as summary
+		e.done = true
+		e.Summary = e.buf.String()
+		return
+	}
+
+	// extract literal
+	if node.Literal != nil {
+		e.buf.Write(node.Literal)
+	}
+
+	// skip rendering as body contents
+	if !e.skipSubject {
+		skip = true
+	}
+
+	return
+}
+
 type TrackedFile struct {
 	isMarkdown bool
 	Href       string
@@ -174,7 +256,33 @@ func (f *TrackedFile) Load() error {
 			return fmt.Errorf("error ioutil.ReadFile(): %s", err)
 		}
 		out = bytes.TrimSpace(out)
-		f.Content = string(blackfriday.Run(out))
+
+		r := blackfriday.NewHTMLRenderer(blackfriday.HTMLRendererParameters{
+			Flags: blackfriday.CommonHTMLFlags,
+		})
+		parser := blackfriday.New(
+			blackfriday.WithExtensions(blackfriday.CommonExtensions),
+		)
+		ast := parser.Parse(out)
+
+		// extract subject and summary
+		var buf bytes.Buffer
+		extractor := &mdExtractor{}
+		ast.Walk(func(node *blackfriday.Node, entering bool) blackfriday.WalkStatus {
+			skipRender := extractor.Extract(node, entering)
+			if !skipRender {
+				return r.RenderNode(&buf, node, entering)
+			}
+			return blackfriday.GoToNext
+		})
+
+		if extractor.Subject != "" {
+			f.Subject = extractor.Subject
+		}
+		if extractor.Summary != "" {
+			f.Summary = extractor.Summary
+		}
+		f.Content = buf.String()
 	}
 
 	return nil
