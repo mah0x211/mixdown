@@ -61,13 +61,10 @@ prepare:
 	GO111MODULES=on GOPATH=$(DEPS_DIR) $(GOGET) gopkg.in/russross/blackfriday.v2
 
 test: prepare
-	GOPATH=$(DEPS_DIR) $(GOTEST) -coverprofile=cover.out . $(TESTPKGS)
+	GOPATH=$(DEPS_DIR) $(GOTEST) -coverprofile=coverage.out -covermode=atomic ./...
 
 lint:
 	GOPATH=$(DEPS_DIR) $(GOLINT) run $(LINT_OPT)
-
-coverage: test
-	GOPATH=$(DEPS_DIR) $(GOTOOL) cover -func=cover.out
 
 clean:
 	$(GOCLEAN)
